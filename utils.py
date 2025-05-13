@@ -40,12 +40,13 @@ def SmilesToDescriptors(fpgen, smile_list, sanitize=True):
     return df
 
 
-def plot_results(results, lookup, nbr_controls):
+def plot_results(results, lookup, figure_name, nbr_controls=1):
   """
   Plot the results from a BayBe simulation (observations, best observations, top 99% hits and cum. regret).
 
   results: dataframe from the simulation
   lookup: dataframe used for the simulation
+  figure_name: name of the figure to save + extension (e.g 'figure.png')
   nbr_controls: number of control campaigns
   """
   if nbr_controls < 1:
@@ -115,3 +116,4 @@ def plot_results(results, lookup, nbr_controls):
   ax[3].set_ylabel('Cum regret')
   ax[3].legend(fontsize=8)
   plt.tight_layout()
+  plt.savefig('./figures/'+figure_name, dpi=300)
