@@ -28,7 +28,7 @@ def getMolFromSmile(x, sanitize=True):
 def SmilesToDescriptors(smile_list, method, sanitize=True, radius=2, fpSize=1024):
     """Convert a list of SMILES to a DataFrame with fingerprints.
     
-    fpgen: Fingerprint generator from rdkit
+    method: String, 'Morgan', 'Mordred' or 'Morfeus'
     smile_list: List of SMILES strings
     sanitize: Boolean, allow some mistakes in the smile if set to False
 
@@ -41,6 +41,12 @@ def SmilesToDescriptors(smile_list, method, sanitize=True, radius=2, fpSize=1024
       fingerprints = [list(fpgen.GetFingerprint(x)) for x in mol_list]
       df = pd.DataFrame(fingerprints, index=smile_list)
     
+    if method=='Mordred':
+      pass
+
+    if method=='Morfeus':
+      pass
+
     df = df_drop_single_value_columns(df)
     return df
 
