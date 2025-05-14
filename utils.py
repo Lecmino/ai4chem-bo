@@ -1,4 +1,5 @@
 from rdkit.Chem import GetSSSR, MolFromSmiles
+from rdkit.Chem.AllChem import GetMorganGenerator
 from baybe.utils.dataframe import df_drop_single_value_columns
 import pandas as pd
 import seaborn as sns
@@ -24,7 +25,7 @@ def getMolFromSmile(x, sanitize=True):
     return mol
 
 
-def SmilesToDescriptors(fpgen, smile_list, sanitize=True):
+def SmilesToDescriptors(smile_list, method, sanitize=True, radius=2, fpSize=1024):
     """Convert a list of SMILES to a DataFrame with fingerprints.
     
     fpgen: Fingerprint generator from rdkit
@@ -33,8 +34,12 @@ def SmilesToDescriptors(fpgen, smile_list, sanitize=True):
 
     return: Dataframe with the SMILE as index, the whole row is the fingerprint (each column is a bit).
     """
+    mol_list = [getMolFromSmile(x, sanitize=sanitize) for x in smile_list]
+    
+    if method=='Morgan':
+      fpgen = GetMorganGenerator(radius=radius,fpSize=fpSize)
+      fingerprints = [list(fpgen.GetFingerprint(x)) for x in mol_list]
 
-    fingerprints = [list(fpgen.GetFingerprint(getMolFromSmile(x, sanitize=sanitize))) for x in smile_list]
     df = pd.DataFrame(fingerprints, index=smile_list)
     df = df_drop_single_value_columns(df)
     return df
