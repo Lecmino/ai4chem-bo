@@ -78,5 +78,7 @@ for reaction in dataset.reactions:
   catalyst, reactants, products, products_undesired, solvent, ee, ee_undesired, yield_undesired, reaction_smile = extract_reaction_data(reaction)
   #print(len(reactants), len(products), len(solvent), len(products_undesired), len(ee), len(ee_undesired))
   df_smiles.loc[len(df_smiles.index)] = [*reactants, *products, *solvent, *catalyst, *products_undesired, *ee, *ee_undesired, *yield_undesired, reaction_smile]
+import re
 
+df_smiles['curated_catalyst_2'] = df_smiles['catalyst_2'].apply(lambda x: re.sub(re.escape('F[P](F)(F)(F)(F)F.CC(C)(C)C1=CC=[N@H]2C(=C1)C3=CC(=CC=[N@@H]3[Ir]2456c7cc(F)cc(F)c7C8=CC=C(C=[N]48)C(F)(F)F)C(C)(C)C.Fc9cc(F)c(C%10=[N]5C=C(C=C%10)C(F)(F)F)c6c9'),"F[P-](F)(F)(F)(F)F.CC(C)(C)C1=CC[N@H+]2C(=C1)C3=CC(=CC[N@@H+]3[Ir-4]2456c7cc(F)cc(F)c7C8=CC=C(C=[N+]48)C(F)(F)F)C(C)(C)C.Fc9cc(F)c(C%10=[N+]5C=C(C=C%10)C(F)(F)F)c6c9", x))
 df_smiles.to_csv('dataset.csv', index=False)
