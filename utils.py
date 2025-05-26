@@ -191,7 +191,7 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
  
   ax[0].hlines(y=lookup['ee_R'].max(), color='black', alpha=0.7, xmin=0, xmax=iterMax)
   sns.lineplot(data=results, x='Iteration', y='ee_R_IterBest', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[0])
-  ax[0].set_ylabel('ee_R')
+  ax[0].set_ylabel('ee R')
   ax[0].legend(fontsize=8)
   ax[0].set_title('Campaign results')
 
@@ -202,16 +202,20 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
   sns.lineplot(data=results, x='Iteration', y='ee_R_CumBest', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[1])
   ax[1].set_title('Best hit')
   ax[1].legend(fontsize=8)
-  ax[1].set_ylabel('ee_R')
+  ax[1].set_ylabel('ee R')
 
   #top 99%
   ee_99 = lookup['ee_R'].quantile(0.99)
+  n_99 = (lookup['ee_R'] > ee_99).sum()
+
   results['top_hits'] = results.groupby(['Scenario', 'Monte_Carlo_Run'], group_keys=False)['ee_R_IterBest'] \
       .apply(lambda x: (x > ee_99).cumsum())
 
+  results['top_hits'] = results['top_hits']/n_99
+
   sns.lineplot(data=results, x='Iteration', y='top_hits', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[2])
-  ax[2].set_title('Top 99% hits')
-  ax[2].set_ylabel('Number of top hits')
+  ax[2].set_title('Q(0.99) hits')
+  ax[2].set_ylabel('Ratio of Q(0.99) hits')
   ax[2].legend(fontsize=8)
 
   """
@@ -228,7 +232,7 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
 
   sns.lineplot(data=results, x='Iteration', y='cum_regret', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[3])
   ax[3].set_title('Cumulative regret')
-  ax[3].set_ylabel('Cum regret')
+  ax[3].set_ylabel('Cumulative regret')
   ax[3].legend(fontsize=8)
   plt.tight_layout()
   plt.savefig('./figures/'+figure_name, dpi=300)
