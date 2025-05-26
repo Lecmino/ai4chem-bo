@@ -133,7 +133,7 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
   plt.tight_layout()
   plt.savefig('./figures/'+figure_name, dpi=300)
 
-  def plot_results_multi(results, lookup, figure_name, nbr_controls=1):
+def plot_results_multi(results, lookup, figure_name, nbr_controls=1):
   
   if nbr_controls < 1:
     raise ValueError('You need at least one control campaign')
