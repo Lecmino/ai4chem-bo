@@ -1,9 +1,13 @@
+from rdkit import Chem
 from rdkit.Chem import GetSSSR, MolFromSmiles
 from rdkit.Chem.AllChem import GetMorganGenerator
 from baybe.utils.dataframe import df_drop_single_value_columns
+from rdkit.Chem import MACCSkeys, RDKFingerprint
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from rdkit.Chem import EState, rdMolDescriptors, Crippen
 
 
 def getMolFromSmile(x, sanitize=True):
@@ -23,7 +27,39 @@ def getMolFromSmile(x, sanitize=True):
     GetSSSR(mol)
     mol.UpdatePropertyCache(strict=False)
     return mol
+def _onehot_fp(smiles_list):
+    ser = pd.Series(smiles_list, dtype="category")
+    df  = pd.get_dummies(ser, dtype=float)
+    df.index = smiles_list
+    return df
 
+def _estate_fp(smiles_list):
+    """
+    Return an (n × 81) DataFrame:
+    79 E-State bins  +  TPSA  +  logP
+    """
+    rows = []
+    for smi in smiles_list:
+        mol = Chem.MolFromSmiles(smi)
+        Chem.SanitizeMol(mol)
+
+        # --- 79-dim E-State histogram
+        from rdkit.Chem.EState import Fingerprinter as ESFP
+        _, vec = ESFP.FingerprintMol(mol)     # vec is already length-79
+        vec = np.asarray(vec, dtype=float)    # make it a NumPy array
+
+
+      
+        
+
+        # --- add TPSA + logP
+        tpsa = rdMolDescriptors.CalcTPSA(mol)
+        logp = Crippen.MolLogP(mol)
+
+        rows.append(np.concatenate([vec, [tpsa, logp]]))
+
+    cols = [f"EState_{i+1}" for i in range(79)] + ["TPSA", "logP"]
+    return pd.DataFrame(rows, index=smiles_list, columns=cols)
 
 def SmilesToDescriptors(smile_list, method, sanitize=True, radius=2, fpSize=1024):
     """Convert a list of SMILES to a DataFrame with fingerprints.
@@ -40,12 +76,80 @@ def SmilesToDescriptors(smile_list, method, sanitize=True, radius=2, fpSize=1024
       fpgen = GetMorganGenerator(radius=radius,fpSize=fpSize)
       fingerprints = [list(fpgen.GetFingerprint(x)) for x in mol_list]
       df = pd.DataFrame(fingerprints, index=smile_list)
-    
-    if method=='Mordred':
-      pass
+    elif method == 'OneHot':
+      df = _onehot_fp(smile_list)
+    elif method == 'MACCS':
+      fingerprints = [list(MACCSkeys.GenMACCSKeys(mol)) for mol in mol_list]
+      df = pd.DataFrame(fingerprints, index=smile_list)
 
-    if method=='Morfeus':
-      pass
+    elif method == 'RDK':
+      fingerprints = [list(RDKFingerprint(mol)) for mol in mol_list]
+      df = pd.DataFrame(fingerprints, index=smile_list)
+    elif method == 'EState':                     # <- NEW BRANCH
+      df = _estate_fp(smile_list)
+    elif method == 'Morfeus':
+      from morfeus import BuriedVolume, SASA, VisibleVolume, Sterimol
+      from rdkit import Chem
+      from rdkit.Chem import AllChem
+
+      features, valid_smiles = [], []
+      pt = Chem.GetPeriodicTable()         # for van-der-Waals radii
+
+      for smi in smile_list:
+          mol = Chem.MolFromSmiles(smi)
+          if mol is None:
+            print(f"❌ invalid SMILES skipped: {smi}")
+            continue
+
+          mol = Chem.AddHs(mol)
+
+          try:
+            # 3-D geometry
+            if AllChem.EmbedMolecule(mol, randomSeed=0xF00D) != 0:
+              raise ValueError("embedding failed")
+            AllChem.UFFOptimizeMolecule(mol)
+
+         
+
+            conf = mol.GetConformer()            # <- moved before use
+            coords = np.array(                   # <- build float array once
+                [[conf.GetAtomPosition(i).x,
+                  conf.GetAtomPosition(i).y,
+                  conf.GetAtomPosition(i).z]
+                for i in range(mol.GetNumAtoms())],
+                dtype=float,
+            )
+
+            radii  = [pt.GetRvdw(atom.GetAtomicNum()) for atom in mol.GetAtoms()]
+
+            # centre: first heavy atom
+            metal_index = next(
+                (i for i, atom in enumerate(mol.GetAtoms()) if atom.GetAtomicNum() > 1), 0
+            )
+
+            buried_vol = BuriedVolume(coords, radii, metal_index).buried_volume
+            sasa         = SASA(mol).sasa
+            visible_vol  = VisibleVolume(mol).visible_volume
+            L, B1, B5    = Sterimol(mol).sterimol
+
+            # mean Gasteiger charge
+            AllChem.ComputeGasteigerCharges(mol)
+            charges    = [float(atom.GetProp('_GasteigerCharge')) for atom in mol.GetAtoms()]
+            avg_charge = np.mean(charges)
+
+            features.append(
+                [visible_vol, sasa, buried_vol, L, B1, B5, avg_charge]
+            )
+            valid_smiles.append(smi)
+
+          except Exception as e:
+            print(f"❌ failed on {smi}: {e}")
+            continue
+
+      cols = ["volume", "sasa", "buried_vol", "L", "B1", "B5", "avg_charge"]
+      df   = pd.DataFrame(features, index=valid_smiles, columns=cols)
+
+    
 
     df = df_drop_single_value_columns(df)
     return df
