@@ -128,3 +128,54 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
   ax[3].legend(fontsize=8)
   plt.tight_layout()
   plt.savefig('./figures/'+figure_name, dpi=300)
+
+  def plot_results_multi(results, lookup, figure_name, nbr_controls=1):
+  
+  if nbr_controls < 1:
+    raise ValueError('You need at least one control campaign')
+
+  dashes = [(1,0)]*(results['Scenario'].nunique()-nbr_controls+1) + [(3,4)]*(nbr_controls-1)
+
+  colors = sns.color_palette('Set1', results['Scenario'].nunique()-nbr_controls)
+  greys = sns.color_palette('Greys', nbr_controls)[::-1]
+  palette = colors + greys
+  
+  colors_alt = sns.color_palette('Paired', results['Scenario'].nunique() - nbr_controls)
+  greys_alt = sns.color_palette('Dark2', nbr_controls)[::-1]
+  palette_alt = colors_alt + greys_alt
+
+  optimum = lookup['ee_R'].max()
+  #add columns
+  results['ins_regret'] = optimum - results['ee_R_IterBest']
+  results['sim_regret'] = optimum - results['ee_R_CumBest']
+  results['cum_regret'] = results.groupby(['Scenario', 'Monte_Carlo_Run'], group_keys=False)['ins_regret'].cumsum()
+
+  optimum = lookup['yield_undesired_R'].min()
+  #add columns
+  results['ins_regret_yield'] = optimum - results['yield_undesired_R_IterBest']
+  results['sim_regret_yield'] = optimum - results['yield_undesired_R_CumBest']
+  results['cum_regret_yield'] = results.groupby(['Scenario', 'Monte_Carlo_Run'], group_keys=False)['ins_regret_yield'].cumsum()
+
+  #Campaigns results
+  iterMax = results['Iteration'].max()
+
+  fig, ax = plt.subplots(1, 2, figsize=(10,4))
+  ax=ax.flatten()
+  ax[0].hlines(y=lookup['ee_R'].max(), color='black', alpha=0.7, xmin=0, xmax=iterMax)
+  
+  sns.lineplot(data=results, x='Iteration', y='ee_R_IterBest', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[0])
+  ax_2 = ax[0].twinx()
+  sns.lineplot(data=results, x='Iteration', y='yield_undesired_R_IterBest', hue='Scenario', style='Scenario', dashes=dashes, palette=palette_alt, ax=ax_2)
+  ax_2.set_ylabel("Byproduct (A.U.)")
+  ax_2.legend(fontsize=8, loc='upper right')
+  ax[0].set_ylabel(r'$\mathit{ee}_{R}(\%)$')
+  ax[0].legend(fontsize=8, loc='upper left')
+  ax[0].set_title('Campaign results')
+
+  sns.lineplot(data=results, x='Iteration', y='cum_regret', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[1])
+  ax[1].set_title('Cumulative regret')
+  ax[1].set_ylabel('Cum. regret')
+  ax[1].legend(fontsize=8)
+  plt.tight_layout()
+  plt.savefig('./figures/'+figure_name, dpi=300)
+  
