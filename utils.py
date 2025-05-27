@@ -53,13 +53,16 @@ def _estate_fp(smiles_list):
         
 
         # --- add TPSA + logP
-        tpsa = rdMolDescriptors.CalcTPSA(mol)
-        logp = Crippen.MolLogP(mol)
+        #tpsa = rdMolDescriptors.CalcTPSA(mol)
+        #logp = Crippen.MolLogP(mol)
 
-        rows.append(np.concatenate([vec, [tpsa, logp]]))
+        #rows.append(np.concatenate([vec, [tpsa, logp]]))
 
-    cols = [f"EState_{i+1}" for i in range(79)] + ["TPSA", "logP"]
-    return pd.DataFrame(rows, index=smiles_list, columns=cols)
+    #cols = [f"EState_{i+1}" for i in range(79)] + ["TPSA", "logP"]
+    cols = [f"EState_{i+1}" for i in range(len(vec))]
+    df = pd.DataFrame(rows, index=smiles_list, columns=cols)
+    print(df, df.shape)
+    return 
 
 def SmilesToDescriptors(smile_list, method, sanitize=True, radius=2, fpSize=1024):
     """Convert a list of SMILES to a DataFrame with fingerprints.
@@ -191,7 +194,7 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
  
   ax[0].hlines(y=lookup['ee_R'].max(), color='black', alpha=0.7, xmin=0, xmax=iterMax)
   sns.lineplot(data=results, x='Iteration', y='ee_R_IterBest', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[0])
-  ax[0].set_ylabel('ee R')
+  ax[0].set_ylabel(r'$\mathit{ee}_{R}(\%)$')
   ax[0].legend(fontsize=8)
   ax[0].set_title('Campaign results')
 
@@ -202,7 +205,7 @@ def plot_results(results, lookup, figure_name, nbr_controls=1):
   sns.lineplot(data=results, x='Iteration', y='ee_R_CumBest', hue='Scenario', style='Scenario', dashes=dashes, palette=palette, ax=ax[1])
   ax[1].set_title('Best hit')
   ax[1].legend(fontsize=8)
-  ax[1].set_ylabel('ee R')
+  ax[1].set_ylabel(r'$\mathit{ee}_{R}(\%)$')
 
   #top 99%
   ee_99 = lookup['ee_R'].quantile(0.99)
