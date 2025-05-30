@@ -34,7 +34,7 @@ def extract_reaction_data(reaction):
 
     reaction_smile = reaction.identifiers[0].value
 
-    # Parse inputs to extract reactants, catalysts, solvents
+    # Extract reactants, catalysts, solvents from the reaction inputs
     for key, val in reaction.inputs.items():
         for component in val.components:
             smile = component.identifiers[0].value
@@ -46,7 +46,7 @@ def extract_reaction_data(reaction):
             if role == 3 and smile not in solvent:
                 solvent.append(smile)
 
-    # Parse products to classify as desired or undesired
+    # Recover products from reaction outcomes, classify as desired or undesired
     for product in reaction.outcomes[0].products:
         if product.is_desired_product:
             products.append(product.identifiers[0].value)
@@ -70,15 +70,15 @@ def extract_reaction_data(reaction):
         reaction_smile,
     )
 
-
+#Build the DataFrame
 df_smiles = pd.DataFrame(columns=['reactant_1','reactant_2', 'reactant_3', 'product_R', 'product_S', 'solvent', 'catalyst_1', 'catalyst_2',
  'product_undesired_R', 'product_undesired_S', 'ee_R', 'ee_S','ee_undesired_R','ee_undesired_S', 'yield_undesired_R','yield_undesired_S', 'reaction'])
 
 for reaction in dataset.reactions:
   catalyst, reactants, products, products_undesired, solvent, ee, ee_undesired, yield_undesired, reaction_smile = extract_reaction_data(reaction)
-  #print(len(reactants), len(products), len(solvent), len(products_undesired), len(ee), len(ee_undesired))
   df_smiles.loc[len(df_smiles.index)] = [*reactants, *products, *solvent, *catalyst, *products_undesired, *ee, *ee_undesired, *yield_undesired, reaction_smile]
 import re
 
+#Add a column for catalyst 2, some SMILES were not properly defined (charges and valance, notably of P)
 df_smiles['curated_catalyst_2'] = df_smiles['catalyst_2'].apply(lambda x: re.sub(re.escape('F[P](F)(F)(F)(F)F.CC(C)(C)C1=CC=[N@H]2C(=C1)C3=CC(=CC=[N@@H]3[Ir]2456c7cc(F)cc(F)c7C8=CC=C(C=[N]48)C(F)(F)F)C(C)(C)C.Fc9cc(F)c(C%10=[N]5C=C(C=C%10)C(F)(F)F)c6c9'),"F[P-](F)(F)(F)(F)F.CC(C)(C)C1=CC[N@H+]2C(=C1)C3=CC(=CC[N@@H+]3[Ir-4]2456c7cc(F)cc(F)c7C8=CC=C(C=[N+]48)C(F)(F)F)C(C)(C)C.Fc9cc(F)c(C%10=[N+]5C=C(C=C%10)C(F)(F)F)c6c9", x))
 df_smiles.to_csv('dataset.csv', index=False)
